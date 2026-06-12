@@ -30,6 +30,7 @@
   ],
   "scripts": {
     "build": "tsup",
+    "prepare": "tsup",
     "type-check": "tsc --noEmit"
   },
   "peerDependencies": {
