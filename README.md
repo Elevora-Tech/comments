@@ -26,7 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         {children}
-        <ElevoraComments project="hockeytime" />
+        <ElevoraComments project="my-site" apiBase="https://feedback.example.com" />
       </body>
     </html>
   );
@@ -40,7 +40,7 @@ The component is a client component (`'use client'`) that renders nothing and mo
 ```ts
 import { initElevora } from "@elevora/comments";
 
-const handle = initElevora({ project: "hockeytime" });
+const handle = initElevora({ project: "my-site", apiBase: "https://feedback.example.com" });
 // later, if needed:
 handle.destroy();
 ```
@@ -49,14 +49,14 @@ handle.destroy();
 
 ## How auth works
 
-Each reviewer gets an invite code (e.g. `HKY-MATT-4821`) from whoever runs the project. They enter it once in the widget; it's exchanged for a token stored in `localStorage`. If the token is ever revoked or expires, the widget falls back to the code form automatically. Reviewers only ever see their own open comments.
+Each reviewer gets an invite code (e.g. `ELV-MAT-4821`) from whoever runs the project. They enter it once in the widget; it's exchanged for a token stored in `localStorage`. If the token is ever revoked or expires, the widget falls back to the code form automatically. Reviewers only ever see their own open comments.
 
 ## Options
 
-| Option    | Type     | Default                              | Description                          |
-| --------- | -------- | ------------------------------------ | ------------------------------------ |
-| `project` | `string` | — (required)                         | Project key invite codes belong to.  |
-| `apiBase` | `string` | `https://mat-api-orcin.vercel.app`   | Feedback backend to send comments to. Point this at your own deployment if you self-host. |
+| Option    | Type     | Default      | Description                          |
+| --------- | -------- | ------------ | ------------------------------------ |
+| `project` | `string` | — (required) | Project key invite codes belong to.  |
+| `apiBase` | `string` | — (required) | Your deployment of the Elevora comments API. The package ships with no default backend. |
 
 ## License
 

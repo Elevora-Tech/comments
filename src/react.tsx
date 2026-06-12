@@ -4,10 +4,13 @@ import { useEffect } from "react";
 import { initElevora } from "./index";
 
 export interface ElevoraCommentsProps {
-  /** Project key the invite codes were issued for (e.g. "hockeytime"). */
+  /** Project key the invite codes were issued for (e.g. "my-site"). */
   project: string;
-  /** Override the feedback backend. Defaults to Elevora's hosted API. */
-  apiBase?: string;
+  /**
+   * Feedback backend the widget talks to (your deployment of the Elevora
+   * comments API). Required — the package ships with no default backend.
+   */
+  apiBase: string;
 }
 
 /**

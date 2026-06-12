@@ -3,13 +3,14 @@ import { Widget } from "./widget";
 export { ApiError } from "./api";
 export type { CommentRecord } from "./api";
 
-const DEFAULT_API_BASE = "https://mat-api-orcin.vercel.app";
-
 export interface ElevoraOptions {
-  /** Project key the invite codes were issued for (e.g. "hockeytime"). */
+  /** Project key the invite codes were issued for (e.g. "my-site"). */
   project: string;
-  /** Override the feedback backend. Defaults to Elevora's hosted API. */
-  apiBase?: string;
+  /**
+   * Feedback backend the widget talks to (your deployment of the Elevora
+   * comments API). Required — the package ships with no default backend.
+   */
+  apiBase: string;
 }
 
 export interface ElevoraHandle {
@@ -35,12 +36,17 @@ export function initElevora(options: ElevoraOptions): ElevoraHandle {
     return NOOP_HANDLE;
   }
 
+  if (!options.apiBase) {
+    console.error("[elevora] apiBase is required — widget not mounted.");
+    return NOOP_HANDLE;
+  }
+
   const existing = instances.get(options.project);
   if (existing) return existing;
 
   const widget = new Widget({
     project: options.project,
-    apiBase: options.apiBase ?? DEFAULT_API_BASE,
+    apiBase: options.apiBase.replace(/\/+$/, ""),
   });
 
   const handle: ElevoraHandle = {

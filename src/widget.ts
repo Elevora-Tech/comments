@@ -315,7 +315,7 @@ export class Widget {
     const form = h("form");
     const input = h("input", "ev-input");
     input.type = "text";
-    input.placeholder = "e.g. HKY-MATT-4821";
+    input.placeholder = "e.g. ELV-MAT-4821";
     input.autocomplete = "off";
     input.spellcheck = false;
     input.setAttribute("aria-label", "Invite code");
