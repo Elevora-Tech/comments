@@ -2,6 +2,8 @@
 
 A tiny, dependency-free widget that lets your client reviewers leave pinned comments directly on your site — Vercel-comments style. A reviewer enters their invite code once, toggles comment mode, clicks anywhere on the page, types a note, done. Comments are delivered to your configured backend.
 
+![Elevora widget — a pinned comment and the reviewer panel on a live site](docs/screenshot.png)
+
 - Zero runtime dependencies, renders in a Shadow DOM (your styles stay yours)
 - Invite-code auth — no accounts, no OAuth
 - Pins anchor to the clicked element via a generated CSS selector and survive reloads
