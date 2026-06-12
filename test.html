@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Elevora comments — manual test harness</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 0; color: #1e293b; }
+      header { background: #0f172a; color: #f8fafc; padding: 48px 24px; }
+      main { max-width: 760px; margin: 0 auto; padding: 24px; }
+      section { margin: 48px 0; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; }
+      footer { background: #f1f5f9; padding: 48px 24px; text-align: center; }
+      a { color: #0ea5e9; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>HockeyTime (test page)</h1>
+      <p>Manual harness for the Elevora comments widget.</p>
+    </header>
+    <main>
+      <section>
+        <h2>Pricing</h2>
+        <p>Some pricing copy a reviewer might want to comment on.</p>
+        <button type="button" onclick="alert('host page button fired')">
+          Host page button (must NOT fire in comment mode)
+        </button>
+      </section>
+      <section>
+        <h2>Features</h2>
+        <p>First paragraph of feature copy.</p>
+        <p>Second paragraph — same tag siblings, exercises nth-of-type.</p>
+        <a href="https://example.com">A link that must not navigate in comment mode</a>
+      </section>
+      <section id="schedule">
+        <h2>Schedule</h2>
+        <p>This section has an id, so selectors should anchor at #schedule.</p>
+      </section>
+    </main>
+    <footer>
+      <p>Tall footer to give the page some scroll height.</p>
+    </footer>
+
+    <script type="module">
+      import { initElevora } from "./dist/index.js";
+      initElevora({ project: "hockeytime", apiBase: "http://localhost:3304" });
+    </script>
+  </body>
+</html>
