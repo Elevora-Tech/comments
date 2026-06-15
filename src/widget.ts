@@ -409,6 +409,14 @@ export class Widget {
     const list = h("ul", "ev-list");
     for (const comment of comments) {
       const item = h("li", "ev-item");
+      // Hovering a row outlines the element this comment is anchored to (no-op
+      // for unlocatable comments).
+      item.addEventListener("mouseenter", () => {
+        this.pins.highlightComment(comment.id);
+      });
+      item.addEventListener("mouseleave", () => {
+        this.pins.clearCommentHighlight();
+      });
       item.appendChild(h("div", "ev-item-body", comment.body));
       const meta = h("div", "ev-item-meta");
       meta.appendChild(h("span", "ev-item-selector", shortSelector(comment.selector)));

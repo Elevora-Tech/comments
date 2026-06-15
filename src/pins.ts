@@ -80,6 +80,8 @@ export class PinManager {
   private readonly fixedLayer: HTMLDivElement;
   private readonly fixedPinsContainer: HTMLDivElement;
   private readonly highlighter: Highlighter;
+  /** Dashed outline over the element an existing comment is anchored to. */
+  private readonly scopeHighlighter: Highlighter;
 
   private comments: CommentRecord[] = [];
   private unlocatable: CommentRecord[] = [];
@@ -106,6 +108,10 @@ export class PinManager {
     this.fixedPinsContainer = h("div");
     this.fixedLayer.appendChild(this.fixedPinsContainer);
     this.highlighter = new Highlighter(this.fixedLayer);
+    this.scopeHighlighter = new Highlighter(this.fixedLayer, {
+      className: "ev-scope",
+      showLabel: false,
+    });
   }
 
   /**
@@ -140,6 +146,9 @@ export class PinManager {
   };
 
   private readonly onScroll = (): void => {
+    // A scope outline is positioned once on hover; drop it rather than let it
+    // drift away from its element as the page scrolls.
+    this.scopeHighlighter.hide();
     if (this.scrollRaf !== null) return;
     this.scrollRaf = window.requestAnimationFrame(() => {
       this.scrollRaf = null;
@@ -214,6 +223,7 @@ export class PinManager {
       this.moveRaf = null;
       this.scrollRaf = null;
       this.highlighter.hide();
+      this.scopeHighlighter.hide();
       this.cursorStyle?.remove();
       this.cursorStyle = null;
       this.closeComposer();
@@ -230,6 +240,23 @@ export class PinManager {
   /** Comments whose anchor no longer resolves to anything on the page. */
   getUnlocatable(): CommentRecord[] {
     return this.unlocatable;
+  }
+
+  /**
+   * Outline the element a comment is anchored to — used when hovering a row in
+   * the panel's comment list. No-op for comments that can't be located (the
+   * "Not locatable on this page" bucket), so nothing is drawn for them.
+   */
+  highlightComment(commentId: string): void {
+    const comment = this.comments.find((c) => c.id === commentId);
+    if (!comment) return;
+    const el = this.resolveComment(comment);
+    if (el && isRenderable(el)) this.scopeHighlighter.show(el);
+    else this.scopeHighlighter.hide();
+  }
+
+  clearCommentHighlight(): void {
+    this.scopeHighlighter.hide();
   }
 
   /**
@@ -274,6 +301,14 @@ export class PinManager {
         pinEl: pin,
       };
       this.placePin(live);
+      // Hovering a pin outlines the element its comment is anchored to, so it's
+      // obvious which component the note is about.
+      pin.addEventListener("mouseenter", () => {
+        if (live.el) this.scopeHighlighter.show(live.el);
+      });
+      pin.addEventListener("mouseleave", () => {
+        this.scopeHighlighter.hide();
+      });
       pin.addEventListener("click", () => {
         this.togglePopover(live);
       });
@@ -449,6 +484,7 @@ export class PinManager {
   destroy(): void {
     this.setActive(false);
     this.highlighter.destroy();
+    this.scopeHighlighter.destroy();
     this.pinsContainer.remove();
     this.fixedLayer.remove();
   }
