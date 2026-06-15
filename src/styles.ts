@@ -17,6 +17,42 @@ export const WIDGET_CSS = `
 
 button { font: inherit; }
 
+/* Viewport-fixed layer: pins on fixed/sticky elements + the hover highlight. */
+.ev-layer-fixed {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* ---- Hover element highlight (comment-mode picker) ---- */
+.ev-highlight {
+  position: fixed;
+  pointer-events: none;
+  border: 2px solid #0ea5e9;
+  background: rgba(14, 165, 233, 0.12);
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.65);
+  transition: left 60ms ease, top 60ms ease, width 60ms ease, height 60ms ease;
+  z-index: 1;
+}
+.ev-highlight-label {
+  position: absolute;
+  top: -20px;
+  left: -2px;
+  background: #0ea5e9;
+  color: #f8fafc;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
 /* ---- Floating action button ---- */
 .ev-fab {
   position: fixed;

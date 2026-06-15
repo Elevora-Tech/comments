@@ -1,5 +1,69 @@
 /** Shapes returned by the Elevora comments backend. */
 
+/**
+ * How a pin must be positioned. "flow" elements ride the document layer and
+ * scroll with the page; "fixed"/"sticky" elements stay in the viewport, so
+ * their pins live in a fixed layer and are repositioned on scroll.
+ */
+export type EffectivePosition = "flow" | "fixed" | "sticky";
+
+/**
+ * Stable, semantic signals captured for the clicked element, used to
+ * re-identify it on later visits when the DOM (or our CSS selector) has
+ * drifted. Position/structure is deliberately excluded — it's the most
+ * brittle signal — so everything here is content-derived.
+ */
+export interface ElementFingerprint {
+  tag: string;
+  id: string | null;
+  role: string | null;
+  ariaLabel: string | null;
+  /** alt / placeholder / title / name — whichever accessible name exists. */
+  accName: string | null;
+  /** Trimmed visible text, capped. */
+  text: string | null;
+  /** data-testid / data-test / data-cy. */
+  testId: string | null;
+  href: string | null;
+}
+
+/**
+ * A redundant set of anchors for one element. Resolution tries the cheap,
+ * precise selector first, then falls back to fuzzy fingerprint matching —
+ * mirroring the Hypothes.is "fragile → robust" anchoring model.
+ */
+export interface ElementAnchor {
+  /** Primary CSS selector (finder-generated, cssPath fallback). */
+  selector: string | null;
+  fingerprint: ElementFingerprint | null;
+  position: EffectivePosition;
+}
+
+/**
+ * Rich, human-readable context about what was clicked. Not used for
+ * positioning — captured so the team can understand a comment during
+ * analysis even if the element later becomes unlocatable.
+ */
+export interface ClickContext {
+  /** One-line description of the element, e.g. `button "Send"`. */
+  label: string | null;
+  /** Nearest landmark + heading breadcrumb, e.g. `main › Pricing`. */
+  section: string | null;
+  /** Landmark element/role the click fell within (nav, main, footer…). */
+  landmark: string | null;
+  /** Heading breadcrumb above the element (outermost → nearest). */
+  headings: string[];
+  /** Element text snippet (capped). */
+  text: string | null;
+  /** Truncated outerHTML of the clicked element. */
+  html: string | null;
+  /** Notable attributes (href, src, alt, type, aria-*, data-*…). */
+  attributes: Record<string, string>;
+  /** Full URL at capture time. */
+  url: string;
+  viewport: { width: number; height: number; dpr: number };
+}
+
 export interface CommentRecord {
   id: string;
   pagePath: string;
@@ -9,6 +73,8 @@ export interface CommentRecord {
   body: string;
   status: string;
   createdAt: string;
+  /** Present on comments created by widget ≥0.2; older rows omit it. */
+  anchor?: ElementAnchor | null;
 }
 
 export interface ReviewerInfo {
@@ -31,6 +97,10 @@ export interface CreateCommentInput {
   xPercent: number;
   yPercent: number;
   body: string;
+  /** Redundant anchor set for robust re-location. */
+  anchor: ElementAnchor;
+  /** Human-readable context for analysis. */
+  context: ClickContext;
 }
 
 export interface CreatedComment {
