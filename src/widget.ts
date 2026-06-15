@@ -186,6 +186,8 @@ export class Widget {
       xPercent: pick.xPercent,
       yPercent: pick.yPercent,
       body,
+      anchor: pick.anchor,
+      context: pick.context,
     };
     let created: CreatedComment;
     try {
@@ -207,6 +209,7 @@ export class Widget {
       yPercent: input.yPercent,
       body: input.body,
       status: "new",
+      anchor: input.anchor,
     };
     this.comments = [...this.comments, record];
     this.pins.setComments(this.comments);

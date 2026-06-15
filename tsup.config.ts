@@ -7,6 +7,9 @@ const shared = {
   target: "es2020" as const,
   platform: "browser" as const,
   external: ["react", "react-dom"],
+  // Bundle runtime deps so dist stays a self-contained drop-in (browser <script
+  // type=module> and CDN usage can't resolve bare specifiers like @medv/finder).
+  noExternal: ["@medv/finder"],
 };
 
 export default defineConfig([
