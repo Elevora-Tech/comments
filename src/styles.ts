@@ -53,6 +53,21 @@ button { font: inherit; }
   white-space: nowrap;
 }
 
+/* ---- Existing-comment scope outline (hovering a pin or a panel row) ---- */
+/* Deliberately distinct from the solid-blue picker: a calmer violet dash so
+   "this is where an existing comment lives" never reads as "the element I'm
+   about to pin." */
+.ev-scope {
+  position: fixed;
+  pointer-events: none;
+  border: 2px dashed #a855f7;
+  background: rgba(168, 85, 247, 0.08);
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5);
+  transition: left 60ms ease, top 60ms ease, width 60ms ease, height 60ms ease;
+  z-index: 1;
+}
+
 /* ---- Floating action button ---- */
 .ev-fab {
   position: fixed;
