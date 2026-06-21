@@ -40,6 +40,32 @@ export interface ElementAnchor {
 }
 
 /**
+ * Attributes of the user logged into the *host site* (not the Elevora
+ * reviewer) at the moment a comment was left. The host app supplies these via
+ * `identify()`; everything is optional. Captured so a comment can be read in
+ * the context of the persona that rendered the page — e.g. the same URL looks
+ * different to an `rta` than to an `admin`. Snapshotted at submit time, so a
+ * persona switch later never rewrites an existing comment.
+ */
+export interface SessionUser {
+  /** Opaque, stable id for the host-site account (preferred join key). */
+  id?: string;
+  name?: string;
+  email?: string;
+  /** The persona/role that determines what this user sees, e.g. "rta". */
+  role?: string;
+  /** The role being previewed when the app supports "view as" impersonation. */
+  viewingAs?: string;
+  /** Tenant/account/org the user belongs to (multi-tenant apps). */
+  orgId?: string;
+  /** Plan or tier, when entitlements gate the UI. */
+  plan?: string;
+  locale?: string;
+  /** App-specific escape hatch: flag buckets, experiment arms, etc. */
+  custom?: Record<string, string | number | boolean>;
+}
+
+/**
  * Rich, human-readable context about what was clicked. Not used for
  * positioning — captured so the team can understand a comment during
  * analysis even if the element later becomes unlocatable.
@@ -62,6 +88,8 @@ export interface ClickContext {
   /** Full URL at capture time. */
   url: string;
   viewport: { width: number; height: number; dpr: number };
+  /** Host-site user attributes at submit time, or null if none were set. */
+  user: SessionUser | null;
 }
 
 export interface CommentRecord {
