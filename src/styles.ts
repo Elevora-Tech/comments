@@ -257,6 +257,49 @@ button { font: inherit; }
   margin-bottom: 8px;
 }
 .ev-card-note { margin: 8px 0 0; color: #fbbf24; font-size: 11px; }
+.ev-card-author {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #38bdf8;
+}
+.ev-card-edit {
+  margin-top: 8px;
+  background: none;
+  border: none;
+  padding: 0;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 12px;
+  text-decoration: underline;
+}
+.ev-card-edit:hover { color: #94a3b8; }
+.ev-scope {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 12px 0 2px;
+  color: #94a3b8;
+  font-size: 12px;
+  cursor: pointer;
+}
+.ev-scope input { accent-color: #0ea5e9; cursor: pointer; }
+.ev-editor textarea {
+  width: 100%;
+  min-height: 80px;
+  resize: vertical;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: #0f172a;
+  color: #f8fafc;
+  outline: none;
+  font: inherit;
+}
+.ev-editor textarea:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25);
+}
 
 /* ---- Browse spotlight (drawn over the focused comment's element) ---- */
 .ev-spotlight {

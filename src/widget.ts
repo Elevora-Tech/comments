@@ -6,6 +6,7 @@ import {
   type CreatedComment,
   type ListCommentsResponse,
   type SessionUser,
+  type UpdatedComment,
 } from "./api";
 import { clearToken, exchangeCode, getReviewerName, getToken } from "./auth";
 import { normalizeUser } from "./context";
@@ -43,6 +44,8 @@ export class Widget {
   private panelOpen = false;
   private commentMode = false;
   private commentIndex = 0;
+  private showAll = false;
+  private editing = false;
   private tooltipShown = false;
   private tooltip: HTMLDivElement | null = null;
   private tooltipTimer: number | null = null;
@@ -108,6 +111,7 @@ export class Widget {
     this.fab.type = "button";
     this.fab.addEventListener("click", () => {
       this.panelOpen = !this.panelOpen;
+      this.editing = false;
       this.renderAll();
       if (this.panelOpen && this.token) this.focusCurrentComment();
       else this.pins.clearFocus();
@@ -168,6 +172,7 @@ export class Widget {
     this.currentPath = path;
     this.comments = [];
     this.commentIndex = 0;
+    this.editing = false;
     this.pins.setComments([]);
     this.pins.clearFocus();
     this.syncHostHeight();
@@ -181,10 +186,11 @@ export class Widget {
     const token = this.token;
     if (!token) return;
     const path = this.currentPath;
+    const scope = this.showAll ? "&scope=all" : "";
     try {
       const result = await apiRequest<ListCommentsResponse>(
         this.apiBase,
-        `/api/comments?path=${encodeURIComponent(path)}`,
+        `/api/comments?path=${encodeURIComponent(path)}${scope}`,
         { token },
       );
       if (this.destroyed || path !== this.currentPath) return;
@@ -235,6 +241,8 @@ export class Widget {
       body: input.body,
       status: "new",
       anchor: input.anchor,
+      authorName: this.reviewerName ?? undefined,
+      mine: true,
     };
     this.comments = [...this.comments, record];
     this.pins.setComments(this.comments);
@@ -259,6 +267,7 @@ export class Widget {
     this.reviewerName = null;
     this.comments = [];
     this.commentIndex = 0;
+    this.editing = false;
     this.notice = null;
     this.authError = message;
     this.pins.setComments([]);
@@ -279,6 +288,7 @@ export class Widget {
     const n = this.comments.length;
     if (n === 0) return;
     this.commentIndex = (this.commentIndex + delta + n) % n;
+    this.editing = false;
     this.renderPanel();
     this.focusCurrentComment();
   }
@@ -286,6 +296,33 @@ export class Widget {
   private focusCurrentComment(): void {
     const comment = this.comments[this.commentIndex];
     if (comment) this.pins.focusComment(comment);
+  }
+
+  /** Flip the "show everyone's comments" toggle and reload the list. */
+  private setShowAll(on: boolean): void {
+    if (this.showAll === on) return;
+    this.showAll = on;
+    this.commentIndex = 0;
+    this.editing = false;
+    this.renderPanel();
+    if (this.token) void this.loadComments();
+  }
+
+  /** PATCH the current comment's body, then update it in place. */
+  private async editComment(comment: CommentRecord, body: string): Promise<void> {
+    const token = this.token;
+    if (!token) throw new ApiError(401, "Not signed in.");
+    const updated = await apiRequest<UpdatedComment>(
+      this.apiBase,
+      `/api/comments/${encodeURIComponent(comment.id)}`,
+      { method: "PATCH", token, body: { body } },
+    );
+    this.comments = this.comments.map((c) =>
+      c.id === comment.id ? { ...c, body: updated.body, status: updated.status } : c,
+    );
+    this.pins.setComments(this.comments);
+    this.editing = false;
+    this.renderPanel();
   }
 
   // ---- Comment mode ----
@@ -296,6 +333,7 @@ export class Widget {
     this.pins.setActive(on);
     if (on) {
       this.panelOpen = false;
+      this.editing = false;
       this.pins.clearFocus();
       if (!this.tooltipShown) {
         this.tooltipShown = true;
@@ -430,9 +468,22 @@ export class Widget {
       this.panel.appendChild(h("p", "ev-error", this.notice));
     }
 
+    const scopeRow = h("label", "ev-scope");
+    const scopeBox = h("input");
+    scopeBox.type = "checkbox";
+    scopeBox.checked = this.showAll;
+    scopeBox.addEventListener("change", () => {
+      this.setShowAll(scopeBox.checked);
+    });
+    scopeRow.appendChild(scopeBox);
+    scopeRow.appendChild(h("span", undefined, "Show everyone's comments"));
+    this.panel.appendChild(scopeRow);
+
     if (this.comments.length === 0) {
-      this.panel.appendChild(h("p", "ev-section-label", "Comments on this page"));
-      this.panel.appendChild(h("p", "ev-empty", "No comments on this page yet."));
+      const empty = this.showAll
+        ? "No comments on this page yet."
+        : "You haven't commented on this page yet.";
+      this.panel.appendChild(h("p", "ev-empty", empty));
     } else {
       this.panel.appendChild(this.renderCarousel());
     }
@@ -482,17 +533,99 @@ export class Widget {
     wrap.appendChild(nav);
 
     const card = h("div", "ev-item");
-    card.appendChild(h("div", "ev-card-body", comment.body));
-    const meta = h("div", "ev-item-meta");
-    const selector = comment.selector ?? comment.anchor?.selector ?? null;
-    meta.appendChild(h("span", "ev-item-selector", shortSelector(selector)));
-    meta.appendChild(h("span", `ev-chip ${chipClass(comment.status)}`, comment.status));
-    card.appendChild(meta);
-    if (unlocatable.has(comment.id)) {
-      card.appendChild(h("p", "ev-card-note", "Can’t locate this on the current page."));
+
+    // Author line only matters once you're looking at more than your own.
+    if (this.showAll && comment.authorName) {
+      card.appendChild(h("p", "ev-card-author", comment.authorName));
     }
+
+    if (this.editing && comment.mine) {
+      card.appendChild(this.renderEditor(comment));
+    } else {
+      card.appendChild(h("div", "ev-card-body", comment.body));
+      const meta = h("div", "ev-item-meta");
+      const selector = comment.selector ?? comment.anchor?.selector ?? null;
+      meta.appendChild(h("span", "ev-item-selector", shortSelector(selector)));
+      meta.appendChild(h("span", `ev-chip ${chipClass(comment.status)}`, comment.status));
+      card.appendChild(meta);
+      if (unlocatable.has(comment.id)) {
+        card.appendChild(h("p", "ev-card-note", "Can’t locate this on the current page."));
+      }
+      // Editable only while the comment is your own and still untriaged ('new').
+      if (comment.mine && comment.status === "new") {
+        const edit = h("button", "ev-card-edit", "Edit");
+        edit.type = "button";
+        edit.addEventListener("click", () => {
+          this.editing = true;
+          this.renderPanel();
+        });
+        card.appendChild(edit);
+      }
+    }
+
     wrap.appendChild(card);
     return wrap;
+  }
+
+  /** Inline body editor for the current (own) comment. */
+  private renderEditor(comment: CommentRecord): HTMLElement {
+    const box = h("div", "ev-editor");
+    const textarea = h("textarea");
+    textarea.value = comment.body;
+    const error = h("p", "ev-error");
+    error.hidden = true;
+    const actions = h("div", "ev-composer-actions");
+    const cancel = h("button", "ev-btn ev-btn-secondary", "Cancel");
+    cancel.type = "button";
+    const save = h("button", "ev-btn", "Save");
+    save.type = "button";
+    actions.appendChild(cancel);
+    actions.appendChild(save);
+    box.appendChild(textarea);
+    box.appendChild(error);
+    box.appendChild(actions);
+
+    const submit = (): void => {
+      const body = textarea.value.trim();
+      if (!body) {
+        error.textContent = "Comment can't be empty.";
+        error.hidden = false;
+        return;
+      }
+      textarea.disabled = true;
+      cancel.disabled = true;
+      save.disabled = true;
+      save.textContent = "Saving…";
+      this.editComment(comment, body).catch((err: unknown) => {
+        if (this.destroyed) return;
+        textarea.disabled = false;
+        cancel.disabled = false;
+        save.disabled = false;
+        save.textContent = "Save";
+        error.textContent =
+          err instanceof ApiError && err.status === 403
+            ? "This comment can no longer be edited."
+            : err instanceof Error
+              ? err.message
+              : "Could not save. Try again.";
+        error.hidden = false;
+      });
+    };
+
+    cancel.addEventListener("click", () => {
+      this.editing = false;
+      this.renderPanel();
+    });
+    save.addEventListener("click", submit);
+    textarea.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        submit();
+      }
+    });
+    // Defer focus until the textarea is in the DOM.
+    window.setTimeout(() => textarea.focus(), 0);
+    return box;
   }
 
   // ---- Lifecycle ----

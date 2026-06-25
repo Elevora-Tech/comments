@@ -51,7 +51,7 @@ handle.destroy();
 
 ## How auth works
 
-Each reviewer gets an invite code (e.g. `ELV-MAT-4821`) from whoever runs the project. They enter it once in the widget; it's exchanged for a token stored in `localStorage`. If the token is ever revoked or expires, the widget falls back to the code form automatically. Reviewers only ever see their own open comments.
+Each reviewer gets an invite code (e.g. `ELV-MAT-4821`) from whoever runs the project. They enter it once in the widget; it's exchanged for a token stored in `localStorage`. If the token is ever revoked or expires, the widget falls back to the code form automatically. By default reviewers see only their own open comments; a **Show everyone's comments** toggle in the panel switches to every reviewer's open comments on the same project (never across projects). A reviewer can edit the body of their own comments while they're still untriaged.
 
 ## Options
 

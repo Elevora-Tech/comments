@@ -103,6 +103,10 @@ export interface CommentRecord {
   createdAt: string;
   /** Present on comments created by widget ≥0.2; older rows omit it. */
   anchor?: ElementAnchor | null;
+  /** Reviewer who wrote the comment. Always set by backend ≥0.5. */
+  authorName?: string;
+  /** True when the authenticated reviewer wrote this comment (gates editing). */
+  mine?: boolean;
 }
 
 export interface ReviewerInfo {
@@ -136,6 +140,12 @@ export interface CreatedComment {
   createdAt: string;
 }
 
+export interface UpdatedComment {
+  id: string;
+  body: string;
+  status: string;
+}
+
 /** Typed error thrown for any non-2xx response. `status` is 0 for network failures. */
 export class ApiError extends Error {
   readonly status: number;
@@ -148,7 +158,7 @@ export class ApiError extends Error {
 }
 
 interface RequestInitOptions {
-  method?: "GET" | "POST";
+  method?: "GET" | "POST" | "PATCH";
   token?: string;
   body?: unknown;
 }
