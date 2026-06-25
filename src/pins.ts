@@ -92,6 +92,7 @@ export class PinManager {
   private cursorStyle: HTMLStyleElement | null = null;
   private moveRaf: number | null = null;
   private scrollRaf: number | null = null;
+  private spotlight: HTMLDivElement | null = null;
 
   constructor(layer: HTMLElement, callbacks: PinManagerCallbacks) {
     this.layer = layer;
@@ -191,6 +192,7 @@ export class PinManager {
   setActive(on: boolean): void {
     if (this.active === on) return;
     this.active = on;
+    this.clearFocus();
     if (on) {
       document.addEventListener("click", this.onDocumentClick, { capture: true });
       document.addEventListener("keydown", this.onKeyDown, { capture: true });
@@ -230,6 +232,50 @@ export class PinManager {
   /** Comments whose anchor no longer resolves to anything on the page. */
   getUnlocatable(): CommentRecord[] {
     return this.unlocatable;
+  }
+
+  /**
+   * Bring a single comment into view: scroll its anchored element to the centre
+   * of the viewport and draw a pulsing spotlight over it. Powers the panel's
+   * one-at-a-time browser, and works whether or not comment mode is on.
+   * Returns false when the comment can't be located on the current page.
+   */
+  focusComment(comment: CommentRecord): boolean {
+    this.clearFocus();
+    const el = this.resolveComment(comment);
+    if (el && isRenderable(el)) {
+      el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+      this.drawSpotlight(el);
+      return true;
+    }
+    const hasSelector = comment.anchor?.selector != null || comment.selector != null;
+    if (!hasSelector) {
+      // Document-relative pin (html/body click): scroll to its page point.
+      const top = (document.documentElement.scrollHeight * comment.yPercent) / 100;
+      window.scrollTo({ top: top - window.innerHeight / 2, behavior: "smooth" });
+      return true;
+    }
+    return false;
+  }
+
+  /** Remove the browse spotlight, if any. */
+  clearFocus(): void {
+    this.spotlight?.remove();
+    this.spotlight = null;
+  }
+
+  /** Draw a document-positioned box over `el` so it scrolls with the page. */
+  private drawSpotlight(el: Element): void {
+    const rect = el.getBoundingClientRect();
+    const box = h("div", "ev-spotlight");
+    Object.assign(box.style, {
+      left: `${rect.left + window.scrollX}px`,
+      top: `${rect.top + window.scrollY}px`,
+      width: `${rect.width}px`,
+      height: `${rect.height}px`,
+    });
+    this.layer.appendChild(box);
+    this.spotlight = box;
   }
 
   /**
@@ -448,6 +494,7 @@ export class PinManager {
 
   destroy(): void {
     this.setActive(false);
+    this.clearFocus();
     this.highlighter.destroy();
     this.pinsContainer.remove();
     this.fixedLayer.remove();

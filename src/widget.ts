@@ -42,6 +42,7 @@ export class Widget {
   private currentPath: string;
   private panelOpen = false;
   private commentMode = false;
+  private commentIndex = 0;
   private tooltipShown = false;
   private tooltip: HTMLDivElement | null = null;
   private tooltipTimer: number | null = null;
@@ -62,6 +63,17 @@ export class Widget {
 
   private readonly onPopState = (): void => {
     this.checkRoute();
+  };
+
+  /** Left/right arrows cycle through comments while the panel is browsing. */
+  private readonly onPanelKey = (event: KeyboardEvent): void => {
+    if (!this.panelOpen || !this.token || this.commentMode) return;
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    const tag = (event.target as HTMLElement | null)?.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA") return; // don't hijack typing
+    if (this.comments.length < 2) return;
+    event.preventDefault();
+    this.step(event.key === "ArrowRight" ? 1 : -1);
   };
 
   constructor(options: WidgetOptions) {
@@ -97,6 +109,8 @@ export class Widget {
     this.fab.addEventListener("click", () => {
       this.panelOpen = !this.panelOpen;
       this.renderAll();
+      if (this.panelOpen && this.token) this.focusCurrentComment();
+      else this.pins.clearFocus();
     });
     this.layer.appendChild(this.fab);
 
@@ -116,6 +130,7 @@ export class Widget {
 
     window.addEventListener("resize", this.onResize);
     window.addEventListener("popstate", this.onPopState);
+    document.addEventListener("keydown", this.onPanelKey, { capture: true });
     // Lightweight SPA route watcher (Next.js App Router does client-side nav
     // without popstate); also catches late layout growth (images, lazy data).
     this.routeTimer = window.setInterval(() => {
@@ -152,7 +167,9 @@ export class Widget {
     if (path === this.currentPath) return;
     this.currentPath = path;
     this.comments = [];
+    this.commentIndex = 0;
     this.pins.setComments([]);
+    this.pins.clearFocus();
     this.syncHostHeight();
     this.renderAll();
     if (this.token) void this.loadComments();
@@ -173,8 +190,10 @@ export class Widget {
       if (this.destroyed || path !== this.currentPath) return;
       this.notice = null;
       this.comments = result.comments;
+      if (this.commentIndex >= this.comments.length) this.commentIndex = 0;
       this.pins.setComments(result.comments);
       this.renderAll();
+      if (this.panelOpen) this.focusCurrentComment();
     } catch (error) {
       if (this.destroyed) return;
       this.handleApiError(error, "Could not load your comments.");
@@ -239,9 +258,11 @@ export class Widget {
     this.token = null;
     this.reviewerName = null;
     this.comments = [];
+    this.commentIndex = 0;
     this.notice = null;
     this.authError = message;
     this.pins.setComments([]);
+    this.pins.clearFocus();
     this.setCommentMode(false);
     this.renderAll();
   }
@@ -249,6 +270,22 @@ export class Widget {
   /** Update the host-site user attributes stamped onto subsequent comments. */
   identify(user: SessionUser | null): void {
     this.currentUser = normalizeUser(user);
+  }
+
+  // ---- Comment browser ----
+
+  /** Move the browse cursor by `delta`, wrapping, and surface the new comment. */
+  private step(delta: number): void {
+    const n = this.comments.length;
+    if (n === 0) return;
+    this.commentIndex = (this.commentIndex + delta + n) % n;
+    this.renderPanel();
+    this.focusCurrentComment();
+  }
+
+  private focusCurrentComment(): void {
+    const comment = this.comments[this.commentIndex];
+    if (comment) this.pins.focusComment(comment);
   }
 
   // ---- Comment mode ----
@@ -259,6 +296,7 @@ export class Widget {
     this.pins.setActive(on);
     if (on) {
       this.panelOpen = false;
+      this.pins.clearFocus();
       if (!this.tooltipShown) {
         this.tooltipShown = true;
         this.showTooltip("Click anywhere to comment");
@@ -392,20 +430,11 @@ export class Widget {
       this.panel.appendChild(h("p", "ev-error", this.notice));
     }
 
-    const unlocatable = this.pins.getUnlocatable();
-    const unlocatableIds = new Set(unlocatable.map((c) => c.id));
-    const located = this.comments.filter((c) => !unlocatableIds.has(c.id));
-
-    this.panel.appendChild(h("p", "ev-section-label", "Comments on this page"));
-    if (located.length === 0) {
+    if (this.comments.length === 0) {
+      this.panel.appendChild(h("p", "ev-section-label", "Comments on this page"));
       this.panel.appendChild(h("p", "ev-empty", "No comments on this page yet."));
     } else {
-      this.panel.appendChild(this.renderCommentList(located));
-    }
-
-    if (unlocatable.length > 0) {
-      this.panel.appendChild(h("p", "ev-section-label", "Not locatable on this page"));
-      this.panel.appendChild(this.renderCommentList(unlocatable));
+      this.panel.appendChild(this.renderCarousel());
     }
 
     const signOut = h("button", "ev-signout", "Sign out");
@@ -416,18 +445,54 @@ export class Widget {
     this.panel.appendChild(signOut);
   }
 
-  private renderCommentList(comments: CommentRecord[]): HTMLUListElement {
-    const list = h("ul", "ev-list");
-    for (const comment of comments) {
-      const item = h("li", "ev-item");
-      item.appendChild(h("div", "ev-item-body", comment.body));
-      const meta = h("div", "ev-item-meta");
-      meta.appendChild(h("span", "ev-item-selector", shortSelector(comment.selector)));
-      meta.appendChild(h("span", `ev-chip ${chipClass(comment.status)}`, comment.status));
-      item.appendChild(meta);
-      list.appendChild(item);
+  /**
+   * One comment at a time with ‹ › navigation, so a long comment can't blow up
+   * the panel. Cycling also scrolls the page to the comment and spotlights it.
+   */
+  private renderCarousel(): HTMLElement {
+    const total = this.comments.length;
+    if (this.commentIndex >= total || this.commentIndex < 0) this.commentIndex = 0;
+    const comment = this.comments[this.commentIndex]!;
+    const unlocatable = new Set(this.pins.getUnlocatable().map((c) => c.id));
+
+    const wrap = h("div");
+
+    const nav = h("div", "ev-nav");
+    nav.appendChild(h("span", "ev-nav-count", `Comment ${this.commentIndex + 1} of ${total}`));
+    const btns = h("div", "ev-nav-btns");
+    const prev = h("button", "ev-nav-btn", "‹");
+    prev.type = "button";
+    prev.setAttribute("aria-label", "Previous comment");
+    prev.addEventListener("click", () => {
+      this.step(-1);
+    });
+    const next = h("button", "ev-nav-btn", "›");
+    next.type = "button";
+    next.setAttribute("aria-label", "Next comment");
+    next.addEventListener("click", () => {
+      this.step(1);
+    });
+    if (total < 2) {
+      prev.disabled = true;
+      next.disabled = true;
     }
-    return list;
+    btns.appendChild(prev);
+    btns.appendChild(next);
+    nav.appendChild(btns);
+    wrap.appendChild(nav);
+
+    const card = h("div", "ev-item");
+    card.appendChild(h("div", "ev-card-body", comment.body));
+    const meta = h("div", "ev-item-meta");
+    const selector = comment.selector ?? comment.anchor?.selector ?? null;
+    meta.appendChild(h("span", "ev-item-selector", shortSelector(selector)));
+    meta.appendChild(h("span", `ev-chip ${chipClass(comment.status)}`, comment.status));
+    card.appendChild(meta);
+    if (unlocatable.has(comment.id)) {
+      card.appendChild(h("p", "ev-card-note", "Can’t locate this on the current page."));
+    }
+    wrap.appendChild(card);
+    return wrap;
   }
 
   // ---- Lifecycle ----
@@ -439,6 +504,7 @@ export class Widget {
     if (this.resizeTimer !== null) window.clearTimeout(this.resizeTimer);
     window.removeEventListener("resize", this.onResize);
     window.removeEventListener("popstate", this.onPopState);
+    document.removeEventListener("keydown", this.onPanelKey, { capture: true });
     this.hideTooltip();
     this.pins.destroy();
     this.host.remove();

@@ -216,6 +216,63 @@ button { font: inherit; }
 .ev-chip-approved { background: rgba(74, 222, 128, 0.15); color: #4ade80; }
 .ev-chip-other { background: rgba(148, 163, 184, 0.15); color: #94a3b8; }
 .ev-empty { color: #64748b; font-size: 12px; margin: 0; }
+
+/* ---- Comment browser (one at a time) ---- */
+.ev-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 16px 0 6px;
+}
+.ev-nav-count {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #64748b;
+}
+.ev-nav-btns { display: flex; gap: 6px; }
+.ev-nav-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: #1e293b;
+  color: #e2e8f0;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+.ev-nav-btn:hover { background: #334155; }
+.ev-nav-btn:disabled { opacity: 0.4; cursor: default; }
+.ev-card-body {
+  color: #f1f5f9;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  max-height: 220px;
+  overflow-y: auto;
+  margin-bottom: 8px;
+}
+.ev-card-note { margin: 8px 0 0; color: #fbbf24; font-size: 11px; }
+
+/* ---- Browse spotlight (drawn over the focused comment's element) ---- */
+.ev-spotlight {
+  position: absolute;
+  pointer-events: none;
+  border: 2px solid #0ea5e9;
+  background: rgba(14, 165, 233, 0.12);
+  border-radius: 4px;
+  animation: ev-spot-pulse 1.4s ease-out infinite;
+  z-index: 1;
+}
+@keyframes ev-spot-pulse {
+  0% { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.65), 0 0 0 0 rgba(14, 165, 233, 0.5); }
+  70% { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.65), 0 0 0 12px rgba(14, 165, 233, 0); }
+  100% { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.65), 0 0 0 0 rgba(14, 165, 233, 0); }
+}
 .ev-signout {
   display: inline-block;
   margin-top: 14px;
