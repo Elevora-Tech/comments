@@ -1,7 +1,9 @@
-import type { ClickContext } from "./api";
+import type { ClickContext, SessionUser } from "./api";
 
 const HTML_CAP = 600;
 const TEXT_CAP = 160;
+const USER_STR_CAP = 200;
+const USER_CUSTOM_MAX_KEYS = 20;
 const LANDMARK_TAGS = new Set(["MAIN", "NAV", "HEADER", "FOOTER", "ASIDE", "SECTION", "FORM", "DIALOG"]);
 const LANDMARK_ROLES = new Set([
   "main",
@@ -139,5 +141,48 @@ export function buildContext(el: Element): ClickContext {
       height: window.innerHeight,
       dpr: window.devicePixelRatio || 1,
     },
+    // Host-site identity is owned by the Widget and stamped at submit time.
+    user: null,
   };
+}
+
+const USER_STRING_FIELDS = [
+  "id",
+  "name",
+  "email",
+  "role",
+  "viewingAs",
+  "orgId",
+  "plan",
+  "locale",
+] as const;
+
+/**
+ * Clamp a host-supplied `SessionUser` to known fields with hard caps before it
+ * ever leaves the browser. Returns null when nothing usable remains, so an
+ * empty `identify({})` doesn't stamp an empty object onto every comment.
+ */
+export function normalizeUser(raw: SessionUser | null | undefined): SessionUser | null {
+  if (!raw || typeof raw !== "object") return null;
+  const out: SessionUser = {};
+  for (const field of USER_STRING_FIELDS) {
+    const value = raw[field];
+    if (typeof value === "string") {
+      const trimmed = tidy(value);
+      if (trimmed) out[field] = clamp(trimmed, USER_STR_CAP);
+    }
+  }
+  if (raw.custom && typeof raw.custom === "object" && !Array.isArray(raw.custom)) {
+    const custom: Record<string, string | number | boolean> = {};
+    for (const [key, value] of Object.entries(raw.custom).slice(0, USER_CUSTOM_MAX_KEYS)) {
+      if (typeof value === "string") {
+        const trimmed = tidy(value);
+        if (trimmed) custom[clamp(key, 60)] = clamp(trimmed, USER_STR_CAP);
+      } else if (typeof value === "number" ? Number.isFinite(value) : typeof value === "boolean") {
+        custom[clamp(key, 60)] = value;
+      }
+    }
+    if (Object.keys(custom).length > 0) out.custom = custom;
+  }
+  return Object.keys(out).length > 0 ? out : null;
 }

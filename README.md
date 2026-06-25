@@ -59,6 +59,32 @@ Each reviewer gets an invite code (e.g. `ELV-MAT-4821`) from whoever runs the pr
 | --------- | -------- | ------------ | ------------------------------------ |
 | `project` | `string` | — (required) | Project key invite codes belong to.  |
 | `apiBase` | `string` | — (required) | Your deployment of the Elevora comments API. The package ships with no default backend. |
+| `user`    | `SessionUser` | `undefined` | Attributes of the user logged into *your* site (not the reviewer). Optional. Attached to every comment so a report can be read in the context of the persona that saw the page. |
+
+## Identifying the logged-in user
+
+Comments carry two identities: the **reviewer** (invite-code auth — who wrote the note) and, optionally, the **host-site user** (who they were logged in as on your app when they wrote it). The same URL renders differently to an `rta` than to an `admin`, so the persona is often what makes a comment interpretable.
+
+Pass whatever your app knows — every field is optional:
+
+```tsx
+<ElevoraComments
+  project="my-site"
+  apiBase="https://feedback.example.com"
+  user={{ id: user.id, role: "rta", viewingAs: "rta", orgId: user.orgId, plan: "pro" }}
+/>
+```
+
+Personas switch without a reload, so update on change:
+
+```ts
+const handle = initElevora({ project: "my-site", apiBase, user: { role: "rta" } });
+// later, when the user switches "view as":
+handle.identify({ role: "admin", viewingAs: "admin" });
+handle.identify(null); // clear
+```
+
+The React component re-identifies automatically whenever the `user` prop's contents change. The value is **snapshotted onto each comment at submit time**, so switching persona later never rewrites an existing comment. Well-known fields: `id`, `name`, `email`, `role`, `viewingAs`, `orgId`, `plan`, `locale`, plus a free-form `custom` bag (`Record<string, string | number | boolean>`) for flag buckets, experiment arms, etc.
 
 ## License
 

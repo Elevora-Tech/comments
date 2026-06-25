@@ -5,8 +5,10 @@ import {
   type CreateCommentInput,
   type CreatedComment,
   type ListCommentsResponse,
+  type SessionUser,
 } from "./api";
 import { clearToken, exchangeCode, getReviewerName, getToken } from "./auth";
+import { normalizeUser } from "./context";
 import { chipClass, h, PinManager, type PinPick } from "./pins";
 import { WIDGET_CSS } from "./styles";
 
@@ -15,6 +17,7 @@ const COMMENT_GLYPH = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor
 export interface WidgetOptions {
   project: string;
   apiBase: string;
+  user?: SessionUser;
 }
 
 /**
@@ -34,6 +37,7 @@ export class Widget {
 
   private token: string | null;
   private reviewerName: string | null;
+  private currentUser: SessionUser | null;
   private comments: CommentRecord[] = [];
   private currentPath: string;
   private panelOpen = false;
@@ -66,6 +70,7 @@ export class Widget {
     this.currentPath = window.location.pathname;
     this.token = getToken(this.project);
     this.reviewerName = getReviewerName(this.project);
+    this.currentUser = normalizeUser(options.user);
 
     this.host = document.createElement("div");
     this.host.setAttribute("data-elevora", this.project);
@@ -187,7 +192,8 @@ export class Widget {
       yPercent: pick.yPercent,
       body,
       anchor: pick.anchor,
-      context: pick.context,
+      // Snapshot the host-site persona as it is at submit time.
+      context: { ...pick.context, user: this.currentUser },
     };
     let created: CreatedComment;
     try {
@@ -238,6 +244,11 @@ export class Widget {
     this.pins.setComments([]);
     this.setCommentMode(false);
     this.renderAll();
+  }
+
+  /** Update the host-site user attributes stamped onto subsequent comments. */
+  identify(user: SessionUser | null): void {
+    this.currentUser = normalizeUser(user);
   }
 
   // ---- Comment mode ----
