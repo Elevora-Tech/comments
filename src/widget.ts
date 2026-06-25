@@ -468,7 +468,7 @@ export class Widget {
       this.panel.appendChild(h("p", "ev-error", this.notice));
     }
 
-    const scopeRow = h("label", "ev-scope");
+    const scopeRow = h("label", "ev-show-all");
     const scopeBox = h("input");
     scopeBox.type = "checkbox";
     scopeBox.checked = this.showAll;
