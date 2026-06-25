@@ -1,6 +1,6 @@
 {
   "name": "@elevora/comments",
-  "version": "0.3.0",
+  "version": "0.5.0",
   "description": "Elevora — embeddable client feedback widget. Invite-code auth, click-to-pin comments on any page.",
   "license": "MIT",
   "type": "module",
